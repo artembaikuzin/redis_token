@@ -49,7 +49,7 @@ end
 def client_tokens
   @tokens = []
 
-  @redis_token.each("client.#{client.id}") do |token, value|
+  @redis_token.owned_by("client.#{client.id}").each do |token, value|
     @tokens << { token: token, value: value }
   end
 end
@@ -119,12 +119,11 @@ r.get('865249d6b87c4e6dd8f6b0796ace7fa0', slide_expire: false)
 ```ruby
 5.times { r.create('u.555') }
 
-r.each('u.555') { |t,v| p "#{t}: #{v}" }
+r.owned_by('u.555').each { |t,v| p "#{t}: #{v}" }
 # "5e8c661c11955b062d8c512c201734dd: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # "5607a698763a6164975b9ffc06528513: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # "7ef74cb761c1595dd33058e78a125720: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # "621d2a10c34e92d7f0b4fc3b00be62af: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # "17f7cb676e67d6b53c48e51f1c1beeb1: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # => nil
-
 ```

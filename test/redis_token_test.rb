@@ -75,7 +75,7 @@ class RedisTokenTest < MiniTest::Test
     refute(r.del('zero'))
   end
 
-  def test_each
+  def test_owned_by
     r = redis_token_instance
     owner = rand(999)
 
@@ -85,18 +85,21 @@ class RedisTokenTest < MiniTest::Test
     end
 
     actual_tokens = []
-    r.each(owner) do |token, _|
+    r.owned_by(owner).each do |token, _|
       actual_tokens << token
     end
 
     assert_equal(expected_tokens.sort, actual_tokens.sort)
 
     actual_tokens = []
-    r.each('no owner') do |token, _|
+    r.owned_by('no owner').each do |token, _|
       actual_tokens << token
     end
 
     assert(actual_tokens.empty?)
+
+    result = r.owned_by(owner).take(2)
+    assert_equal(result.size, 2)
   end
 
   def test_set

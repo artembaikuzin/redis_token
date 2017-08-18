@@ -116,20 +116,24 @@ class RedisToken
   # Iterate all exist tokens of an owner
   #
   # @param [String] owner
-  def each(owner)
+  #
+  # @return [Enumerator]
+  def owned_by(owner)
     mask = "#{@prefix}#{owner}.*"
 
-    cursor = 0
-    loop do
-      cursor, r = @redis.scan(cursor, match: mask)
-      cursor = cursor.to_i
+    Enumerator.new do |y|
+      cursor = 0
+      loop do
+        cursor, r = @redis.scan(cursor, match: mask)
+        cursor = cursor.to_i
 
-      r.each do |key|
-        token = owner_key_to_token(owner, key)
-        yield(token, redis_get(token_to_key(token)))
+        r.each do |key|
+          token = owner_key_to_token(owner, key)
+          y << [token, redis_get(token_to_key(token))]
+        end
+
+        break if cursor == 0
       end
-
-      break if cursor == 0
     end
   end
 
