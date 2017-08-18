@@ -127,3 +127,16 @@ r.owned_by('u.555').each { |t,v| p "#{t}: #{v}" }
 # "17f7cb676e67d6b53c48e51f1c1beeb1: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # => nil
 ```
+
+### Delete token
+
+```ruby
+r.delete('865249d6b87c4e6dd8f6b0796ace7fa0')
+# => true
+```
+
+### Delete all tokens of an owner
+```ruby
+r.delete_all('client.1')
+# => 8
+```

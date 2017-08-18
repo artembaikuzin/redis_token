@@ -102,6 +102,23 @@ class RedisTokenTest < MiniTest::Test
     assert_equal(result.size, 2)
   end
 
+  def test_delete_all
+    r = redis_token_instance
+    owner = rand(999)
+
+    tokens = []
+    10.times { tokens << r.create(owner) }
+
+    before_delete = r.owned_by(owner).size
+    assert_equal(r.delete_all(owner), 10)
+    after_delete = r.owned_by(owner).size
+
+    assert_equal(10, before_delete)
+    assert_equal(0, after_delete)
+
+    tokens.each { |t| assert_nil(r.get(t)) }
+  end
+
   def test_set
     r = redis_token_instance
     token = r.create(rand(999), payload: { source: :native })

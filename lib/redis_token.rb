@@ -119,22 +119,7 @@ class RedisToken
   #
   # @return [Enumerator]
   def owned_by(owner)
-    mask = "#{@prefix}#{owner}.*"
-
-    Enumerator.new do |y|
-      cursor = 0
-      loop do
-        cursor, r = @redis.scan(cursor, match: mask)
-        cursor = cursor.to_i
-
-        r.each do |key|
-          token = owner_key_to_token(owner, key)
-          y << [token, redis_get(token_to_key(token))]
-        end
-
-        break if cursor == 0
-      end
-    end
+    owned_tokens(owner).map { |token| [token, redis_get(token_to_key(token))]}
   end
 
   # Delete a token
@@ -154,6 +139,25 @@ class RedisToken
 
     true
   end
+
+  alias delete del
+
+  # Delete all tokens of an owner
+  #
+  # @params [String] owner
+  #
+  # @return [Integer] number of deleted tokens
+  def del_all(owner)
+    deleted = 0
+    owned_tokens(owner).each do |token|
+      del(token)
+      deleted += 1
+    end
+
+    deleted
+  end
+
+  alias delete_all del_all
 
   # Retrieve the remaining ttl of a token
   #
@@ -189,5 +193,24 @@ class RedisToken
     value = @redis.get(key)
     return unless value
     Marshal.load(value)
+  end
+
+  def owned_tokens(owner)
+    mask = "#{@prefix}#{owner}.*"
+
+    Enumerator.new do |y|
+      cursor = 0
+      loop do
+        cursor, r = @redis.scan(cursor, match: mask)
+        cursor = cursor.to_i
+
+        r.each do |key|
+          token = owner_key_to_token(owner, key)
+          y << token
+        end
+
+        break if cursor == 0
+      end
+    end
   end
 end
