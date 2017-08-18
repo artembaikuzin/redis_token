@@ -13,6 +13,20 @@ class RedisToken
   attr_accessor :prefix
   attr_reader :created_value
 
+  # Create RedisToken instance
+  #
+  # Implicit redis instance creation (redis parameters can be passed in args):
+  #   RedisToken.new(ttl: 5.days, prefix: 'project.tokens.', host: '127.0.0.1')
+  #
+  # Explicit redis instance injection:
+  #   redis = Redis.new(host: '192.168.0.1', port: 33221)
+  #   RedisToken.new(redis, ttl: 5.days, prefix: 'project.tokens.')
+  #
+  # @param [Hash] args
+  # @option args [String] :prefix redis keys prefix (e.g. 'myproject.tokens.')
+  # @option args [Integer] :ttl token time to live value (14 days by default)
+  #
+  # @return [RedisToken] a new RedisToken instance
   def initialize(args = {}, opts = {})
     @redis = if args.nil? || args.is_a?(Hash)
                init_params(args)
@@ -21,10 +35,16 @@ class RedisToken
                init_params(opts)
                args
              end
-
-    @default_ttl ||= DEFAULT_TTL
   end
 
+  # Create a new token
+  #
+  # @param [String] owner owner of a token, e.g. 'client.1' or 'user-123'
+  # @param [Hash] args
+  # @option args :payload
+  # @option args [Integer] :ttl redefines the default ttl
+  #
+  # @return [String] a new token
   def create(owner, args = {})
     raise 'owner should be specified' unless owner
 
@@ -45,6 +65,14 @@ class RedisToken
     token
   end
 
+  # Get value of a token and slide ttl
+  #
+  # @param [String] token
+  # @param [Hash] args
+  # @option args [Integer] :ttl
+  # @option args [Boolean] :slide_expire (true) slide ttl of a token
+  #
+  # @return [Hash] value of a token
   def get(token, args = {})
     key = token_to_key(token)
     value = redis_get(key)
@@ -61,6 +89,14 @@ class RedisToken
     value
   end
 
+  # Set new payload of a token
+  #
+  # @param [String] token
+  # @param [Hash] args
+  # @option args [Integer] :ttl set new time to live value
+  # @option args :payload new payload value
+  #
+  # @return [Boolean]
   def set(token, args = {})
     key = token_to_key(token)
     value = redis_get(key)
@@ -77,6 +113,9 @@ class RedisToken
     true
   end
 
+  # Iterate all exist tokens of an owner
+  #
+  # @param [String] owner
   def each(owner)
     mask = "#{@prefix}#{owner}.*"
 
@@ -94,6 +133,11 @@ class RedisToken
     end
   end
 
+  # Delete a token
+  #
+  # @param [String] token
+  #
+  # @return [Boolean]
   def del(token)
     key = token_to_key(token)
     value = redis_get(key)
@@ -107,6 +151,9 @@ class RedisToken
     true
   end
 
+  # Retrieve the remaining ttl of a token
+  #
+  # @return [Integer] ttl
   def ttl(token)
     @redis.ttl(token_to_key(token))
   end
@@ -118,7 +165,7 @@ class RedisToken
   end
 
   def init_params(args)
-    @default_ttl = args[:ttl]
+    @default_ttl = args[:ttl] || DEFAULT_TTL
     @prefix = args[:prefix]
   end
 
@@ -138,9 +185,5 @@ class RedisToken
     value = @redis.get(key)
     return unless value
     Marshal.load(value)
-  end
-
-  def check_owner(owner)
-    raise 'owner should be specified' unless owner
   end
 end
