@@ -41,6 +41,7 @@ class RedisToken
   #
   # @param [String] owner owner of a token, e.g. 'client.1' or 'user-123'
   # @param [Hash] args
+  # @option args [String] :token (SecureRandom.hex(16)) user defined token
   # @option args :payload
   # @option args [Integer] :ttl redefines the default ttl
   #

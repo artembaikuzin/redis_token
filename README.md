@@ -94,6 +94,10 @@ user_token = r.create("u:#{current_user.id}", ttl: 15.hours)
 # Create token with payload:
 mobile_token = r.create("c.#{client.id}", payload: { source: :native })
 # => "865249d6b87c4e6dd8f6b0796ace7fa0"
+
+# Save exist token:
+r.create('api', token: SecureRandom.uuid)
+# => "aed6e179-14b4-4a8c-9a1b-6b0f9150ede3"
 ```
 
 ### Get token
