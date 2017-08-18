@@ -144,3 +144,26 @@ r.delete('865249d6b87c4e6dd8f6b0796ace7fa0')
 r.delete_all('client.1')
 # => 8
 ```
+
+### Serialization
+
+redis_token uses native Marshal class for data serialization by default. You can override it like this:
+
+```ruby
+require 'msgpack'
+
+class MsgPackSerializer
+  def pack(value)
+    MessagePack.pack(value)
+  end
+
+  def unpack(value)
+    MessagePack.unpack(value)
+  end
+end
+
+r = RedisToken.new(prefix: PREFIX, serializer_class: MsgPackSerializer)
+# Or
+r = RedisToken.new(prefix: PREFIX)
+r.use(MsgPackSerializer)
+```

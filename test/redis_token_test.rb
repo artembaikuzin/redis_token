@@ -1,5 +1,7 @@
 require_relative '../lib/redis_token'
 
+require 'test_helper'
+
 require 'minitest/autorun'
 require 'minitest/reporters'
 
@@ -7,11 +9,7 @@ Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 
 class RedisTokenTest < MiniTest::Test
   def teardown
-    r = Redis.new
-
-    r.keys("#{PREFIX}*").each do |k|
-      r.del(k)
-    end
+    redis_cleanup(PREFIX)
   end
 
   def test_initialize
@@ -47,6 +45,10 @@ class RedisTokenTest < MiniTest::Test
 
     assert_equal(token, actual_token)
     assert_equal(payload, r.created_value[:payload])
+
+    assert_raises RuntimeError do
+      r.create(nil)
+    end
   end
 
   def test_get

@@ -1,4 +1,6 @@
 require 'redis_token/version'
+require 'redis_token/serializers/native'
+
 require 'redis'
 
 require 'securerandom'
@@ -25,6 +27,7 @@ class RedisToken
   # @param [Hash] args
   # @option args [String] :prefix redis keys prefix (e.g. 'myproject.tokens.')
   # @option args [Integer] :ttl token time to live value (14 days by default)
+  # @option args [Class] :serializer_class serialization class, see RedisToken::Serializers::Native, or #use method
   #
   # @return [RedisToken] a new RedisToken instance
   def initialize(args = {}, opts = {})
@@ -50,7 +53,7 @@ class RedisToken
     raise 'owner should be specified' unless owner
 
     token = args[:token] || generate_token
-    value = { owner: owner, at: Time.now }
+    value = { owner: owner, at: Time.now.to_i }
 
     payload = args[:payload]
     value[:payload] = payload if payload
@@ -59,7 +62,7 @@ class RedisToken
     key_ttl = args[:ttl] || @default_ttl
 
     @redis.multi do |multi|
-      multi.set(token_to_key(token), Marshal.dump(value), ex: key_ttl)
+      multi.set(token_to_key(token), serializer.pack(value), ex: key_ttl)
       multi.set(token_to_owner(owner, token), nil, ex: key_ttl)
     end
 
@@ -84,7 +87,7 @@ class RedisToken
 
     @redis.multi do |multi|
       multi.expire(key, key_ttl)
-      multi.expire(token_to_owner(value[:owner], token), key_ttl)
+      multi.expire(token_to_owner(hash_get(value, :owner), token), key_ttl)
     end
 
     value
@@ -107,8 +110,8 @@ class RedisToken
     key_ttl = args[:ttl] || @redis.ttl(key)
 
     @redis.multi do |multi|
-      multi.set(key, Marshal.dump(value), ex: key_ttl)
-      multi.expire(token_to_owner(value[:owner], token), key_ttl)
+      multi.set(key, serializer.pack(value), ex: key_ttl)
+      multi.expire(token_to_owner(hash_get(value, :owner), token), key_ttl)
     end
 
     true
@@ -120,7 +123,7 @@ class RedisToken
   #
   # @return [Enumerator]
   def owned_by(owner)
-    owned_tokens(owner).map { |token| [token, redis_get(token_to_key(token))]}
+    owned_tokens(owner).map { |token| [token, redis_get(token_to_key(token))] }
   end
 
   # Delete a token
@@ -135,7 +138,7 @@ class RedisToken
 
     @redis.multi do |multi|
       multi.del(key)
-      multi.del(token_to_owner(value[:owner], token))
+      multi.del(token_to_owner(hash_get(value, :owner), token))
     end
 
     true
@@ -167,6 +170,46 @@ class RedisToken
     @redis.ttl(token_to_key(token))
   end
 
+  # Use custom serialization class
+  #
+  # Base serializer example:
+  #   class RedisToken
+  #     class Serializers
+  #       class Native
+  #         def pack(value)
+  #           Marshal.dump(value)
+  #         end
+  #
+  #         def unpack(value)
+  #           Marshal.load(value)
+  #         end
+  #       end
+  #     end
+  #   end
+  #
+  # MessagePack example:
+  #   require 'msgpack'
+  #
+  #   class MsgPackSerializer
+  #     def pack(value)
+  #       MessagePack.pack(value)
+  #     end
+  #
+  #     def unpack(value)
+  #       MessagePack.unpack(value)
+  #     end
+  #   end
+  #
+  #   RedisToken.new(prefix: PREFIX).use(MsgPackSerializer)
+  #
+  # @param [Object] serializer_class
+  #
+  # @return [RedisToken]
+  def use(serializer_class)
+    @serializer_class = serializer_class
+    self
+  end
+
   private
 
   def generate_token
@@ -176,6 +219,9 @@ class RedisToken
   def init_params(args)
     @default_ttl = args[:ttl] || DEFAULT_TTL
     @prefix = args[:prefix]
+
+    @serializer_class = args[:serializer_class]
+    @serializer_class = Serializers::Native unless @serializer_class
   end
 
   def token_to_key(token)
@@ -193,25 +239,33 @@ class RedisToken
   def redis_get(key)
     value = @redis.get(key)
     return unless value
-    Marshal.load(value)
+    serializer.unpack(value)
   end
 
   def owned_tokens(owner)
     mask = "#{@prefix}#{owner}.*"
 
     Enumerator.new do |y|
-      cursor = 0
+      cursor = '0'
       loop do
         cursor, r = @redis.scan(cursor, match: mask)
-        cursor = cursor.to_i
 
         r.each do |key|
           token = owner_key_to_token(owner, key)
           y << token
         end
 
-        break if cursor == 0
+        break if cursor == '0'
       end
     end
+  end
+
+  def serializer
+    @serializer ||= @serializer_class.new
+  end
+
+  # Some serializers can't store symbols out of the box
+  def hash_get(hash, sym)
+    hash.key?(sym) ? hash[sym] : hash[sym.to_s]
   end
 end
