@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['ybinzu@gmail.com']
 
   spec.summary       = %q{API tokens redis store}
-  spec.description   = %q{.}
+  spec.description   = %q{Create and get API tokens with redis}
   spec.homepage      = 'https://github.com/ybinzu/redis_token'
   spec.license       = 'MIT'
 
