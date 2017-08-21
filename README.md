@@ -128,9 +128,9 @@ rt.get('9dfb0d52280965fe4dd95d21447941c2')
 ### Get all tokens owned by someone
 
 ```ruby
-5.times { r.create('u.555') }
+5.times { r.create(owner: 'u.555') }
 
-r.owned_by('u.555').each { |t,v| p "#{t}: #{v}" }
+r.owned_by('u.555').each { |t, v| p "#{t}: #{v}" }
 # "5e8c661c11955b062d8c512c201734dd: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # "5607a698763a6164975b9ffc06528513: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
 # "7ef74cb761c1595dd33058e78a125720: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
