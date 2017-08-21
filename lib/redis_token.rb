@@ -9,7 +9,7 @@ require 'time'
 class RedisToken
   # Token lives 14 days by default
   DEFAULT_TTL = 14 * 24 * 60 * 60
-  DEFAULT_PREFIX = 'tokens.'.freeze
+  DEFAULT_PREFIX = 'tokens'.freeze
 
   attr_reader :redis
   attr_accessor :default_ttl
@@ -43,18 +43,19 @@ class RedisToken
 
   # Create a new token
   #
-  # @param [String] owner owner of a token, e.g. 'client.1' or 'user-123'
   # @param [Hash] args
+  # @option args [String] :owner owner of a token, e.g. 'client.1' or 'user-123'
   # @option args [String] :token (SecureRandom.hex(16)) user defined token
   # @option args :payload
   # @option args [Integer] :ttl redefines the default ttl
   #
   # @return [String] a new token
-  def create(owner, args = {})
-    raise 'owner should be specified' unless owner
-
+  def create(args = {})
     token = args[:token] || generate_token
-    value = { owner: owner, at: Time.now.to_i }
+    value = { at: Time.now.to_i }
+
+    owner = args[:owner]
+    value[:owner] = owner if owner
 
     payload = args[:payload]
     value[:payload] = payload if payload
@@ -106,6 +107,7 @@ class RedisToken
     key = token_to_key(token)
     value = redis_get(key)
     return false unless value
+
     value[:payload] = args[:payload]
 
     key_ttl = args[:ttl] || @redis.ttl(key)
@@ -124,7 +126,21 @@ class RedisToken
   #
   # @return [Enumerator]
   def owned_by(owner)
-    owned_tokens(owner).map { |token| [token, redis_get(token_to_key(token))] }
+    owned_tokens(owner)
+  end
+
+  # Tokens without an owner
+  #
+  # @return [Enumerator]
+  def without_owner
+    owned_tokens
+  end
+
+  # All tokens
+  #
+  # @return [Enumerator]
+  def all
+    all_tokens
   end
 
   # Delete a token
@@ -132,7 +148,7 @@ class RedisToken
   # @param [String] token
   #
   # @return [Boolean]
-  def del(token)
+  def delete(token)
     key = token_to_key(token)
     value = redis_get(key)
     return false unless value
@@ -145,24 +161,30 @@ class RedisToken
     true
   end
 
-  alias delete del
+  alias del delete
 
   # Delete all tokens of an owner
   #
   # @params [String] owner
   #
   # @return [Integer] number of deleted tokens
-  def del_all(owner)
-    deleted = 0
-    owned_tokens(owner).each do |token|
-      del(token)
-      deleted += 1
-    end
-
-    deleted
+  def delete_owned_by(owner)
+    delete_tokens(owned_tokens(owner))
   end
 
-  alias delete_all del_all
+  # Delete tokens without an owner
+  #
+  # @return [Integer] number of deleted tokens
+  def delete_without_owner
+    delete_tokens(owned_tokens)
+  end
+
+  # Delete all tokens
+  #
+  # @return [Integer] number of deleted tokens
+  def delete_all
+    delete_tokens(all_tokens)
+  end
 
   # Retrieve the remaining ttl of a token
   #
@@ -201,7 +223,7 @@ class RedisToken
   #     end
   #   end
   #
-  #   RedisToken.new(prefix: PREFIX).use(MsgPackSerializer)
+  #   r = RedisToken.new.use(MsgPackSerializer)
   #
   # @param [Object] serializer_class
   #
@@ -226,15 +248,19 @@ class RedisToken
   end
 
   def token_to_key(token)
-    "#{@prefix}#{token}"
+    "#{@prefix}.t.#{token}"
   end
 
   def token_to_owner(owner, token)
-    "#{@prefix}#{owner}.#{token}"
+    "#{@prefix}.o.#{owner}.#{token}"
   end
 
   def owner_key_to_token(owner, key)
-    key.sub("#{@prefix}#{owner}.", '')
+    key.sub("#{@prefix}.o.#{owner}.", '')
+  end
+
+  def key_to_token(key)
+    key.sub("#{@prefix}.t.", '')
   end
 
   def redis_get(key)
@@ -243,8 +269,16 @@ class RedisToken
     serializer.unpack(value)
   end
 
-  def owned_tokens(owner)
-    mask = "#{@prefix}#{owner}.*"
+  def owned_tokens(owner = nil)
+    iterator(owner)
+  end
+
+  def all_tokens
+    iterator(nil, true)
+  end
+
+  def iterator(owner = nil, all = false)
+    mask = all ? "#{@prefix}.t.*" : "#{@prefix}.o.#{owner}.*"
 
     Enumerator.new do |y|
       cursor = '0'
@@ -252,12 +286,18 @@ class RedisToken
         cursor, r = @redis.scan(cursor, match: mask)
 
         r.each do |key|
-          token = owner_key_to_token(owner, key)
-          y << token
+          y << (all ? key_to_token(key) : owner_key_to_token(owner, key))
         end
 
         break if cursor == '0'
       end
+    end
+  end
+
+  def delete_tokens(enum)
+    enum.reduce(0) do |deleted, token|
+      del(token)
+      deleted += 1
     end
   end
 
@@ -267,6 +307,6 @@ class RedisToken
 
   # Some serializers can't store symbols out of the box
   def hash_get(hash, sym)
-    hash.key?(sym) ? hash[sym] : hash[sym.to_s]
+    hash.fetch(sym, hash[sym.to_s])
   end
 end

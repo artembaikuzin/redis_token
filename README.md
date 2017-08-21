@@ -27,7 +27,7 @@ def auth
   client = Client.find_by_email(params[:email])
 
   if client.password == params[:password]
-    token = @redis_token.create("client.#{client.id}", payload: { source: :native })
+    token = @redis_token.create(owner: "client.#{client.id}", payload: { source: :native })
     json(access_token: token)
 
     # ...
@@ -47,10 +47,9 @@ def secured_method
 end
 
 def client_tokens
-  @tokens = []
 
-  @redis_token.owned_by("client.#{client.id}").each do |token, value|
-    @tokens << { token: token, value: value }
+  @tokens = @redis_token.owned_by("client.#{client.id}").map do |token, value|
+    { token: token, value: value }
   end
 end
 
@@ -84,20 +83,24 @@ r = RedisToken.new(redis)
 ### Create token
 
 ```ruby
-client_token = r.create("client.#{client.id}")
+client_token = r.create(owner: "client.#{client.id}")
 # => "eca431add3b1f0bbc6cfc73980b68708"
 
 # Redefine default ttl:
-user_token = r.create("u:#{current_user.id}", ttl: 15.hours)
+user_token = r.create(owner: "u:#{current_user.id}", ttl: 15.hours)
 # => "548a5d54eaf474c750bf83ed04bd242a"
 
 # Create token with payload:
-mobile_token = r.create("c.#{client.id}", payload: { source: :native })
+mobile_token = r.create(owner: "c.#{client.id}", payload: { source: :native })
 # => "865249d6b87c4e6dd8f6b0796ace7fa0"
 
 # Save exist token:
-r.create('api', token: SecureRandom.uuid)
+r.create(owner: 'api', token: SecureRandom.uuid)
 # => "aed6e179-14b4-4a8c-9a1b-6b0f9150ede3"
+
+# Token without an owner:
+r.create
+# => "9dfb0d52280965fe4dd95d21447941c2"
 ```
 
 ### Get token
@@ -116,6 +119,10 @@ r.ttl('865249d6b87c4e6dd8f6b0796ace7fa0')
 
 # To prevent ttl sliding set slide_expire to false:
 r.get('865249d6b87c4e6dd8f6b0796ace7fa0', slide_expire: false)
+
+# Token without an owner:
+rt.get('9dfb0d52280965fe4dd95d21447941c2')
+# => {:at=>1503327773}
 ```
 
 ### Get all tokens owned by someone
@@ -132,17 +139,30 @@ r.owned_by('u.555').each { |t,v| p "#{t}: #{v}" }
 # => nil
 ```
 
-### Delete token
+### Deletion
 
+Single token:
 ```ruby
 r.delete('865249d6b87c4e6dd8f6b0796ace7fa0')
 # => true
 ```
 
-### Delete all tokens of an owner
+All tokens of an owner:
 ```ruby
-r.delete_all('client.1')
+r.delete_owned_by('client.1')
 # => 8
+```
+
+All tokens without an owner:
+```ruby
+r.delete_without_owner
+# => 1
+```
+
+All tokens:
+```ruby
+r.delete_all
+# => 99
 ```
 
 ### Serialization
