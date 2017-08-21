@@ -42,10 +42,8 @@ class MsgPackSerializer
   end
 end
 
-PREFIX = 'rt.ben.'
-
-native_marshal = RedisToken.new(prefix: PREFIX)
-msgpack_marshal = RedisToken.new(prefix: PREFIX).use(MsgPackSerializer)
+native_marshal = RedisToken.new
+msgpack_marshal = RedisToken.new.use(MsgPackSerializer)
 
 
 def create(instance)
@@ -70,4 +68,4 @@ Benchmark.ips do |x|
   x.compare!
 end
 
-redis_cleanup(PREFIX)
+redis_cleanup(RedisToken::DEFAULT_PREFIX)

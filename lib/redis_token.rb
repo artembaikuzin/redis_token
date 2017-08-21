@@ -9,6 +9,7 @@ require 'time'
 class RedisToken
   # Token lives 14 days by default
   DEFAULT_TTL = 14 * 24 * 60 * 60
+  DEFAULT_PREFIX = 'tokens.'.freeze
 
   attr_reader :redis
   attr_accessor :default_ttl
@@ -25,7 +26,7 @@ class RedisToken
   #   RedisToken.new(redis, ttl: 5.days, prefix: 'project.tokens.')
   #
   # @param [Hash] args
-  # @option args [String] :prefix redis keys prefix (e.g. 'myproject.tokens.')
+  # @option args [String] :prefix (DEFAULT_PREFIX) redis keys prefix (e.g. 'myproject.tokens.')
   # @option args [Integer] :ttl token time to live value (14 days by default)
   # @option args [Class] :serializer_class serialization class, see RedisToken::Serializers::Native, or #use method
   #
@@ -218,7 +219,7 @@ class RedisToken
 
   def init_params(args)
     @default_ttl = args[:ttl] || DEFAULT_TTL
-    @prefix = args[:prefix]
+    @prefix = args[:prefix] || DEFAULT_PREFIX
 
     @serializer_class = args[:serializer_class]
     @serializer_class = Serializers::Native unless @serializer_class

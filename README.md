@@ -57,7 +57,7 @@ end
 private
 
 def create_service
-  @redis_token ||= RedisToken.new(prefix: 'myproject.tokens.', ttl: 30.days)
+  @redis_token ||= RedisToken.new(ttl: 30.days)
 end
 ```
 
@@ -67,18 +67,18 @@ Implicit Redis instance creation:
 
 ```ruby
 # Redis.new with no arguments:
-r = RedisToken.new(prefix: 'myproject.tokens.', ttl: 30.days)
+r = RedisToken.new(ttl: 30.days)
 
 # Redis.new(host: '192.168.1.1', port: 33421)
-r = RedisToken.new(prefix: 'myproject.tokens.', host: '192.168.1.1', port: 33421)
+r = RedisToken.new(host: '192.168.1.1', port: 33421)
 ```
 
 Explicit Redis instance injection:
 
 ```ruby
 redis = Redis.new
-r = RedisToken.new(redis, prefix: 'myproject.tokens.', ttl: 30.days)
-r = RedisToken.new(redis, prefix: 'myproject2.tokens.')
+r = RedisToken.new(redis, ttl: 30.days)
+r = RedisToken.new(redis)
 ```
 
 ### Create token
@@ -162,8 +162,8 @@ class MsgPackSerializer
   end
 end
 
-r = RedisToken.new(prefix: PREFIX, serializer_class: MsgPackSerializer)
+r = RedisToken.new(serializer_class: MsgPackSerializer)
 # Or
-r = RedisToken.new(prefix: PREFIX)
+r = RedisToken.new
 r.use(MsgPackSerializer)
 ```

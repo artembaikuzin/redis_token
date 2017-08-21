@@ -9,7 +9,7 @@ Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 
 class RedisTokenTest < MiniTest::Test
   def teardown
-    redis_cleanup(PREFIX)
+    redis_cleanup(RedisToken::DEFAULT_PREFIX)
   end
 
   def test_initialize
@@ -36,7 +36,7 @@ class RedisTokenTest < MiniTest::Test
   end
 
   def test_create
-    r = redis_token_instance
+    r = RedisToken.new
     token = SecureRandom.hex(16)
     payload = { type: :native }
 
@@ -52,7 +52,7 @@ class RedisTokenTest < MiniTest::Test
   end
 
   def test_get
-    r = redis_token_instance
+    r = RedisToken.new
     owner = rand(999)
     actual_token = r.create(owner)
 
@@ -69,7 +69,7 @@ class RedisTokenTest < MiniTest::Test
   end
 
   def test_del
-    r = redis_token_instance
+    r = RedisToken.new
     actual_token = r.create(rand(999))
     refute_nil(r.get(actual_token))
     assert(r.del(actual_token))
@@ -78,7 +78,7 @@ class RedisTokenTest < MiniTest::Test
   end
 
   def test_owned_by
-    r = redis_token_instance
+    r = RedisToken.new
     owner = rand(999)
 
     expected_tokens = []
@@ -105,7 +105,7 @@ class RedisTokenTest < MiniTest::Test
   end
 
   def test_delete_all
-    r = redis_token_instance
+    r = RedisToken.new
     owner = rand(999)
 
     tokens = []
@@ -122,7 +122,7 @@ class RedisTokenTest < MiniTest::Test
   end
 
   def test_set
-    r = redis_token_instance
+    r = RedisToken.new
     token = r.create(rand(999), payload: { source: :native })
 
     new_payload = { source: :web }
@@ -138,13 +138,5 @@ class RedisTokenTest < MiniTest::Test
     assert_nil(r.get(token)[:payload])
 
     refute(r.set('zero', payload: '1234'))
-  end
-
-  private
-
-  PREFIX = 'tokens.'
-
-  def redis_token_instance
-    RedisToken.new(prefix: PREFIX)
   end
 end
