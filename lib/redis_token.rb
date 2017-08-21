@@ -64,7 +64,7 @@ class RedisToken
     key_ttl = args[:ttl] || @default_ttl
 
     @redis.multi do |multi|
-      multi.set(token_to_key(token), serializer.pack(value), ex: key_ttl)
+      multi.set(token_to_key(token), @serializer.pack(value), ex: key_ttl)
       multi.set(token_to_owner(owner, token), nil, ex: key_ttl)
     end
 
@@ -113,7 +113,7 @@ class RedisToken
     key_ttl = args[:ttl] || @redis.ttl(key)
 
     @redis.multi do |multi|
-      multi.set(key, serializer.pack(value), ex: key_ttl)
+      multi.set(key, @serializer.pack(value), ex: key_ttl)
       multi.expire(token_to_owner(hash_get(value, :owner), token), key_ttl)
     end
 
@@ -229,7 +229,7 @@ class RedisToken
   #
   # @return [RedisToken]
   def use(serializer_class)
-    @serializer_class = serializer_class
+    @serializer = serializer_class.new
     self
   end
 
@@ -242,9 +242,7 @@ class RedisToken
   def init_params(args)
     @default_ttl = args[:ttl] || DEFAULT_TTL
     @prefix = args[:prefix] || DEFAULT_PREFIX
-
-    @serializer_class = args[:serializer_class]
-    @serializer_class = Serializers::Native unless @serializer_class
+    @serializer = (args[:serializer_class] || Serializers::Native).new
   end
 
   def token_to_key(token)
@@ -266,7 +264,7 @@ class RedisToken
   def redis_get(key)
     value = @redis.get(key)
     return unless value
-    serializer.unpack(value)
+    @serializer.unpack(value)
   end
 
   def owned_tokens(owner = nil)
@@ -299,10 +297,6 @@ class RedisToken
       del(token)
       deleted += 1
     end
-  end
-
-  def serializer
-    @serializer ||= @serializer_class.new
   end
 
   # Some serializers can't store symbols out of the box

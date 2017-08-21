@@ -5,7 +5,19 @@ require 'test_helper'
 require 'minitest/autorun'
 require 'minitest/reporters'
 
+require 'json'
+
 Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
+
+class JsonSerializer
+  def pack(value)
+    value.to_json
+  end
+
+  def unpack(value)
+    JSON.parse(value)
+  end
+end
 
 class RedisTokenTest < MiniTest::Test
   def teardown
@@ -147,5 +159,20 @@ class RedisTokenTest < MiniTest::Test
     assert_nil(r.get(token)[:payload])
 
     refute(r.set('zero', payload: '1234'))
+  end
+
+  def test_serializer
+    r = RedisToken.new(serializer_class: JsonSerializer)
+    t = r.create
+
+    actual = r.get(t)
+    assert_equal(r.created_value[:at], actual['at'])
+
+    r = RedisToken.new.use(JsonSerializer)
+    t = r.create(owner: 'c.1')
+
+    actual = r.get(t)
+    assert_equal(r.created_value[:at], actual['at'])
+    assert_equal(r.created_value[:owner], actual['owner'])
   end
 end
