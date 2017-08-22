@@ -107,13 +107,13 @@ r.create
 
 ```ruby
 value = r.get('865249d6b87c4e6dd8f6b0796ace7fa0')
-# => {:owner=>"c.555", :at=>2017-08-18 15:53:15 +0300, :payload=>{:source=>:native}}
+# => {:owner=>"c.555", :at=>1503327773, :payload=>{:source=>:native}}
 
 # Each get request slides ttl by default:
 r.ttl('865249d6b87c4e6dd8f6b0796ace7fa0')
 # => 1209493
 r.get('865249d6b87c4e6dd8f6b0796ace7fa0')
-# => {:owner=>"c.555", :at=>2017-08-18 15:53:15 +0300, :payload=>{:source=>:native}}
+# => {:owner=>"c.555", :at=>1503327773, :payload=>{:source=>:native}}
 r.ttl('865249d6b87c4e6dd8f6b0796ace7fa0')
 # => 1209598
 
@@ -131,11 +131,11 @@ rt.get('9dfb0d52280965fe4dd95d21447941c2')
 5.times { r.create(owner: 'u.555') }
 
 r.owned_by('u.555').each { |t, v| p "#{t}: #{v}" }
-# "5e8c661c11955b062d8c512c201734dd: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
-# "5607a698763a6164975b9ffc06528513: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
-# "7ef74cb761c1595dd33058e78a125720: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
-# "621d2a10c34e92d7f0b4fc3b00be62af: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
-# "17f7cb676e67d6b53c48e51f1c1beeb1: {:owner=>\"u.555\", :at=>2017-08-18 16:02:10 +0300}"
+# "5e8c661c11955b062d8c512c201734dd: {:owner=>\"u.555\", :at=>1503327773}"
+# "5607a698763a6164975b9ffc06528513: {:owner=>\"u.555\", :at=>1503327773}"
+# "7ef74cb761c1595dd33058e78a125720: {:owner=>\"u.555\", :at=>1503327773}"
+# "621d2a10c34e92d7f0b4fc3b00be62af: {:owner=>\"u.555\", :at=>1503327773}"
+# "17f7cb676e67d6b53c48e51f1c1beeb1: {:owner=>\"u.555\", :at=>1503327773}"
 # => nil
 ```
 
