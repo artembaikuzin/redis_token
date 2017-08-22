@@ -47,7 +47,6 @@ def secured_method
 end
 
 def client_tokens
-
   @tokens = @redis_token.owned_by("client.#{client.id}").map do |token, value|
     { token: token, value: value }
   end
